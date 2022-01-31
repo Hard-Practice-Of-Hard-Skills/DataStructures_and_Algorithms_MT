@@ -1,4 +1,5 @@
 from array import array
+from typing import Any
 
 
 class ArrayList:
@@ -6,6 +7,7 @@ class ArrayList:
     use 'array' module to create array data structure
     this list works only with items with the same type
     """
+
     def __init__(self, typecode: str, initializer=None) -> None:
         """
         Initiate data object
@@ -101,85 +103,144 @@ def test_arraylist() -> None:
     assert list(t_arraylist) == [2]
 
 
+class LinkedListItem:
+    """
+    Item of the linked list, contains data and link to the next
+    element of the list
+    """
+    def __init__(self, data: Any) -> None:
+        self.data = data
+        self.link = None  # Link to the next LinkedListItem
+
+
 class LinkedList:
-    def __init__(self, initializer=None) -> None:
+    def __init__(self) -> None:
         """
-        Initiate data object
-        :param initializer: optional, iterable
+        Initiate linked list
         :return: None
         """
-        self._data = list(initializer if initializer else [])
+        self._head = None
+        self._length = 0
+
+    def _last_item(self):
+        """
+        Return pointer to the last item of the list
+        """
+        pointer = self._head
+        while pointer.link:
+            pointer = pointer.link
+        return pointer
 
     def add_front(self, item):
         """
         add item to front of the list (create new head)
         """
-        self._data.insert(0, item)
+        new_head = LinkedListItem(item)
+        new_head.link = self._head
+        self._head = new_head
+        self._length += 1
 
     def add_back(self, item):
         """
         add item to back of the list (create new tail)
         """
-        self._data.append(item)
+        new_tail = LinkedListItem(item)
+        if self._head:
+            pointer = self._last_item()
+            pointer.link = new_tail
+        else:
+            self._head = new_tail
+        self._length += 1
 
     def insert(self, item, index):
         """
         add new item to the middle of linked list
         raise exception if index is out of list size
         """
-        self._data.insert(index, item)
-
-    def pop(self, pos=-1):
-        """
-        remove element from position pos and return it
-        """
-        try:
-            return self._data.pop(pos)
-        except IndexError:
-            raise IndexError('LinkedList: pop index error')
+        if self._length < index < 0:
+            raise IndexError('LinkedList: insert index error')
+        new_item = LinkedListItem(item)
+        if self._head:
+            pointer = self._head
+            for _ in range(index - 1):
+                pointer = pointer.link
+            new_item.link = pointer.link
+            pointer.link = new_item
+        else:
+            self._head = new_item
+        self._length += 1
 
     def head(self):
         """
         return head of linked list
         """
-        try:
-            return self._data[0]
-        except IndexError:
+        if not self._head:
             raise IndexError('LinkedList: is empty')
+        return self._head.data
 
     def tail(self):
         """
         return tail of linked list
         """
-        try:
-            return self._data[-1]
-        except IndexError:
+        if not self._head:
             raise IndexError('LinkedList: is empty')
+        return self._last_item().data
 
     def __len__(self):
-        return len(self._data)
+        return self._length
 
     def __iter__(self):
-        self._iterator = iter(self._data)
-        return self._iterator
+        self._index = self._head
+        return self
 
     def __next__(self):
-        return next(self._iterator)
+        if self._index:
+            data = self._index.data
+            self._index = self._index.link
+            return data
+        else:
+            raise StopIteration
 
 
-def test_linkedlist() -> None:
-    t_linkedlist = LinkedList([2, 3])
-    assert len(t_linkedlist) == 2
-    t_linkedlist.add_back(5)
+def test_linkedlist_init() -> None:
+    t_linkedlist = LinkedList()
+    assert len(t_linkedlist) == 0
+    assert list(t_linkedlist) == []
+
+
+def test_linkedlist_head() -> None:
+    t_linkedlist = LinkedList()
     t_linkedlist.add_front(1)
-    t_linkedlist.insert(4, 3)
-    assert len(t_linkedlist) == 5
     assert t_linkedlist.head() == 1
-    assert t_linkedlist.tail() == 5
-    assert list(t_linkedlist) == [1, 2, 3, 4, 5]
-    assert t_linkedlist.pop(2) == 3
-    assert t_linkedlist.pop() == 5
-    assert list(t_linkedlist) == [1, 2, 4]
+    assert len(t_linkedlist) == 1
+    t_linkedlist.add_front(2)
+    assert t_linkedlist.head() == 2
+    assert len(t_linkedlist) == 2
+    assert list(t_linkedlist) == [2, 1]
+
+
+def test_linkedlist_tail() -> None:
+    t_linkedlist = LinkedList()
+    t_linkedlist.add_back(1)
+    assert len(t_linkedlist) == 1
+    assert t_linkedlist.tail() == 1
+    t_linkedlist.add_back(2)
+    assert len(t_linkedlist) == 2
+    assert t_linkedlist.tail() == 2
+    assert list(t_linkedlist) == [1, 2]
+
+
+def test_linkedlist_insert() -> None:
+    t_linkedlist = LinkedList()
+    t_linkedlist.insert('1', 0)
+    assert len(t_linkedlist) == 1
+    assert t_linkedlist.head() == '1'
+    t_linkedlist.insert('3', 1)
+    assert len(t_linkedlist) == 2
+    assert t_linkedlist.tail() == '3'
+    t_linkedlist.insert('2', 1)
+    assert len(t_linkedlist) == 3
+    assert list(t_linkedlist) == ['1', '2', '3']
 
 
 class Deque:
