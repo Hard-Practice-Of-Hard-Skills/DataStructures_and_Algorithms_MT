@@ -3,6 +3,8 @@ Queue and PrioritizingQueue types implementation
 """
 from typing import Any
 
+import pytest
+
 
 class Queue:
     """
@@ -11,13 +13,25 @@ class Queue:
     :param maxlength: optional, integer
     :return: None
     """
-    def __init__(self, initializer=None, maxlength=None) -> None:
+
+    def __init__(self, maxlength=None) -> None:
         self.maxlength = maxlength
-        if initializer:
-            self._check_capacity(len(initializer))
-            self._data = list(initializer)
-        else:
-            self._data = []
+        self._data = []
+
+    @classmethod
+    def create_from_iterable_v1(cls, iterable, max_length=None):
+        instance = cls(max_length)
+        for item in iterable:
+            instance.put(item)
+        return instance
+
+    @classmethod
+    def create_from_iterable_v2(cls, iterable, max_length=None):
+        instance = cls(max_length)
+        data = list(iterable)
+        instance._check_capacity(len(iterable))
+        instance._data = data
+        return instance
 
     def _check_capacity(self, length):
         if self.maxlength and length > self.maxlength:
@@ -86,6 +100,65 @@ class Queue:
         return next(self._iterator)
 
 
+class TestQueue:
+    def test_get(self):
+        q = Queue()
+        q._data = [1, 2, 3]
+
+        assert q.get() == 1
+        assert len(q) == 3
+
+    def test_remove(self):
+        q = Queue()
+        q._data = [1, 2, 3]
+
+        assert q.remove() == 1
+        assert len(q) == 2
+
+    def test_put(self):
+        q = Queue()
+
+        q.put(1)
+        assert len(q) == 1
+
+    def test_create_from_iterable_v1(self):
+        q = Queue.create_from_iterable_v1([1, 2, 3])
+        assert len(q) == 3
+
+
+class TestSizedQueue:
+    # can be done with mark.parametrize to not copy and paste
+    def test_get(self):
+        q = Queue(3)
+        q._data = [1, 2, 3]
+
+        assert q.get() == 1
+        assert len(q) == 3
+
+    # can be done with mark.parametrize to not copy and paste
+    def test_put(self):
+        q = Queue()
+
+        q.put(1)
+        assert len(q) == 1
+
+    def test_put_when_max_len_exceeded(self):
+        q = Queue(maxlength=1)
+
+        q.put(1)
+        with pytest.raises(BufferError):
+            q.put(2)
+
+    # can be done with mark.parametrize to not copy and paste
+    def test_create_from_iterable_v1(self):
+        q = Queue.create_from_iterable_v1([1, 2, 3])
+        assert len(q) == 3
+
+    def test_create_from_iterable_v1_when_max_len_exceeded(self):
+        with pytest.raises(BufferError):
+            Queue.create_from_iterable_v1([1, 2, 3], 2)
+
+
 def test_queue() -> None:
     t_queue = Queue(maxlength=3)
     assert not t_queue
@@ -128,6 +201,7 @@ class PriorityQueue:
     :param revers: optional Boolean
     :return: None
     """
+
     def __init__(self,
                  initializer=None, maxlength=None, revers=False) -> None:
         self.maxlength = maxlength
