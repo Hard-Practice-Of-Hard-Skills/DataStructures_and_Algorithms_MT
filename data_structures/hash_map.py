@@ -1,7 +1,21 @@
 import pytest
+from typing import Any
 
 
-class HashMap:
+def my_hash(size: int, value: Any) -> int:
+    """
+    Return hash for any object witch has str method
+    :param size: result will be more than zero and less than size
+    :param value: any object having str method
+    :return: int
+    """
+    result = 0
+    for char in str(value):
+        result += ord(char)
+    return result % size
+
+
+class HashMapCollision:
     """
     HashMap implementation without collision handling
     :param size: int, hashmap size, by default=50
@@ -10,12 +24,7 @@ class HashMap:
     def __init__(self, size=5) -> None:
         self.size = size
         self.hash_map = [None] * size
-
-    def my_hash(self, value) -> int:
-        result = 0
-        for char in str(value):
-            result += ord(char)
-        return result % self.size
+        self.filled = 0
 
     def get(self, key, default=None):
         """
@@ -41,7 +50,7 @@ class HashMap:
         """
         return element for the provided key and pops it from the map
         """
-        hashed_key = self.my_hash(key)
+        hashed_key = my_hash(self.size, key)
         element = self.hash_map[hashed_key]
         self.hash_map[hashed_key] = None
         return element
@@ -75,7 +84,7 @@ class HashMap:
         return value for the provided key,
         raise KeyError if there is no value for key
         """
-        hashed_key = self.my_hash(key)
+        hashed_key = my_hash(self.size, key)
         if not self.hash_map[hashed_key]:
             raise KeyError
         _, value = self.hash_map[hashed_key]
@@ -85,7 +94,13 @@ class HashMap:
         """
         set value for the provided key
         """
-        hashed_key = self.my_hash(key)
+        hashed_key = my_hash(self.size, key)
+        if not self.hash_map[hashed_key]:
+            self.filled += 1
+        if self.filled / self.size >= 0.75:
+            # expand hash table if it's filled more than 75%
+            self.hash_map.extend([None] * self.size)
+            self.size = len(self.hash_map)
         self.hash_map[hashed_key] = (key, value)
 
     def __iter__(self):
@@ -110,20 +125,20 @@ class HashMap:
         return str(self.hash_map)
 
 
-def test_hashmap_init():
-    hm = HashMap(size=2)
+def test_hashmap_init(test_class=HashMapCollision):
+    hm = test_class(size=2)
     assert not bool(hm)
     assert str(hm) == '[None, None]'
 
 
-@pytest.mark.xfail(raises=KeyError)
-def test_hashmap__get():
-    hm = HashMap(size=5)
-    assert hm[0]
+def test_hashmap_key_error(test_class=HashMapCollision):
+    hm = test_class(size=5)
+    with pytest.raises(KeyError):
+        assert hm[0]
 
 
-def test_hashmap_set__get():
-    hm = HashMap(size=5)
+def test_hashmap_set(test_class=HashMapCollision):
+    hm = test_class(size=5)
     hm[0] = 0
     assert hm[0] == 0
     assert bool(hm)
@@ -133,8 +148,17 @@ def test_hashmap_set__get():
     assert hm[5] == 5
 
 
-def test_hashmap_get():
-    hm = HashMap(size=5)
+def test_hashmap_extend(test_class=HashMapCollision):
+    hm = test_class(size=4)
+    hm[0] = 0
+    hm[1] = 1
+    assert hm.size == 4
+    hm[2] = 2
+    assert hm.size == 8
+
+
+def test_hashmap_get(test_class=HashMapCollision):
+    hm = test_class(size=5)
     hm[1] = 1
     assert hm.get(1) == 1
     assert hm.get(1, 100) == 1
@@ -142,52 +166,52 @@ def test_hashmap_get():
     assert hm.get(2, 100) == 100
 
 
-def test_hashmap_put():
-    hm = HashMap(size=5)
+def test_hashmap_put(test_class=HashMapCollision):
+    hm = test_class(size=5)
     assert hm.put(1, 1) is None
     assert hm.put(1, 2) == 1
     assert hm[1] == 2
 
 
-def test_hashmap_pop():
-    hm = HashMap(size=5)
+def test_hashmap_pop(test_class=HashMapCollision):
+    hm = test_class(size=5)
     assert hm.pop(1) is None
     hm[1] = 10
     assert hm.pop(1) == (1, 10)
     assert not bool(hm)
 
 
-def test_hashmap_items():
-    hm = HashMap(size=5)
+def test_hashmap_items(test_class=HashMapCollision):
+    hm = test_class(size=5)
     hm[0] = 10
     hm[2] = 20
     assert set(hm.items()) == {(0, 10), (2, 20)}
 
 
-def test_hashmap_keys():
-    hm = HashMap(size=5)
+def test_hashmap_keys(test_class=HashMapCollision):
+    hm = test_class(size=5)
     hm[0] = 10
     hm[2] = 20
     assert set(hm.keys()) == {0, 2}
 
 
-def test_hashmap_values():
-    hm = HashMap(size=5)
+def test_hashmap_values(test_class=HashMapCollision):
+    hm = test_class(size=5)
     hm[0] = 10
     hm[2] = 20
     assert set(hm.values()) == {10, 20}
 
 
-def test_hashmap_iter():
-    hm = HashMap(size=5)
+def test_hashmap_iter(test_class=HashMapCollision):
+    hm = test_class(size=5)
     hm[0] = 10
     hm[2] = 20
     assert set(hm) == {0, 2}
 
 
-class HashMapOpenAddressing(HashMap):
+class HashMapOpenAddressing:
     pass
 
 
-class HashMapSeparateChaining(HashMap):
+class HashMapSeparateChaining:
     pass
