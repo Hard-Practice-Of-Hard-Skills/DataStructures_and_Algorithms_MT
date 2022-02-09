@@ -1,6 +1,6 @@
 import pytest
 
-from hash_map import (
+from data_structures.hash_map import (
     HashMapCollision, HashMapOpenAddressing, HashMapSeparateChaining
 )
 
