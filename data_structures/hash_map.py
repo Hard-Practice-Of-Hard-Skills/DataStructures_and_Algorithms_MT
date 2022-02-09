@@ -1,4 +1,3 @@
-import pytest
 from typing import Any
 
 
@@ -18,13 +17,14 @@ def my_hash(size: int, value: Any) -> int:
 class HashMapCollision:
     """
     HashMap implementation without collision handling
-    :param size: int, hashmap size, by default=50
+    :param size: int, hashmap size, by default=5
     :return: None
     """
     def __init__(self, size=5) -> None:
         self.size = size
         self.hash_map = [None] * size
         self.filled = 0
+        self._index = 0
 
     def get(self, key, default=None):
         """
@@ -50,9 +50,9 @@ class HashMapCollision:
         """
         return element for the provided key and pops it from the map
         """
-        hashed_key = my_hash(self.size, key)
-        element = self.hash_map[hashed_key]
-        self.hash_map[hashed_key] = None
+        index = my_hash(self.size, key)
+        element = self.hash_map[index]
+        self.hash_map[index] = None
         return element
 
     def __bool__(self):
@@ -84,134 +84,195 @@ class HashMapCollision:
         return value for the provided key,
         raise KeyError if there is no value for key
         """
-        hashed_key = my_hash(self.size, key)
-        if not self.hash_map[hashed_key]:
+        item = self.hash_map[my_hash(self.size, key)]
+        if not item:
             raise KeyError
-        _, value = self.hash_map[hashed_key]
-        return value
+        return item[1]
 
     def __setitem__(self, key, value):
         """
         set value for the provided key
         """
-        hashed_key = my_hash(self.size, key)
-        if not self.hash_map[hashed_key]:
+        index = my_hash(self.size, key)
+        if not self.hash_map[index]:
             self.filled += 1
-        if self.filled / self.size >= 0.75:
+        if self.filled >= 0.75 * self.size:
             # expand hash table if it's filled more than 75%
-            self.hash_map.extend([None] * self.size)
-            self.size = len(self.hash_map)
-        self.hash_map[hashed_key] = (key, value)
+            items = self.items()
+            items.append((key, value))
+            self.size *= 2
+            self.hash_map = [None] * self.size
+            for k, v in items:
+                self.hash_map[my_hash(self.size, k)] = (k, v)
+        else:
+            self.hash_map[index] = (key, value)
 
     def __iter__(self):
-        # self._index = 0
-        # return self
-        self._iterator = iter(self.keys())
-        return self._iterator
+        return iter(self.keys())
 
     def __next__(self):
-        # while True:
-        #     if self._index == self.size:
-        #         raise StopIteration
-        #     if self.hash_map[self._index]:
-        #         break
-        #     self._index += 1
-        # key, _ = self.hash_map[self._index]
-        # self._index += 1
-        # return key
-        return next(self._iterator)
+        while True:
+            if self._index == self.size:
+                raise StopIteration
+            if self.hash_map[self._index]:
+                break
+            self._index += 1
+        key = self.hash_map[self._index][0]
+        self._index += 1
+        return key
 
     def __str__(self):
         return str(self.hash_map)
 
 
-def test_hashmap_init(test_class=HashMapCollision):
-    hm = test_class(size=2)
-    assert not bool(hm)
-    assert str(hm) == '[None, None]'
+class HashMapOpenAddressing(HashMapCollision):
+    """
+    HashMap implementation with open addressing
+    :param size: int, hashmap size, by default=5
+    :return: None
+    """
+    def __init__(self, size=5) -> None:
+        super().__init__(size)
+
+    def __getitem__(self, key) -> Any:
+        """
+        return value for the provided key,
+        raise KeyError if there is no value for key
+        """
+        index = my_hash(self.size, key)
+        if not self.hash_map[index]:
+            raise KeyError
+        pointer = index
+        while self.hash_map[pointer][0] != key:
+            pointer += 1
+            if pointer == index:
+                raise KeyError
+            if pointer == len(self.hash_map) - 1:
+                pointer = 0
+        return self.hash_map[pointer][1]
+
+    def _add_to_hash_table(self, key, value) -> None:
+        index = my_hash(self.size, key)
+        while self.hash_map[index] and self.hash_map[index][0] != key:
+            index += 1
+            if index == len(self.hash_map) - 1:
+                index = 0
+        self.hash_map[index] = (key, value)
+
+    def __setitem__(self, key, value):
+        """
+        set value for the provided key
+        """
+        self.filled += 1
+        if self.filled >= 0.75 * self.size:
+            items = self.items()
+            items.append((key, value))
+            self.size *= 2
+            self.hash_map = [None] * self.size
+            for k, v in items:
+                self._add_to_hash_table(k, v)
+        else:
+            self._add_to_hash_table(key, value)
 
 
-def test_hashmap_key_error(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    with pytest.raises(KeyError):
-        assert hm[0]
+class HashMapSeparateChaining(HashMapCollision):
+    """
+    HashMap implementation with Separate chaining
+    :param size: int, hashmap size, by default=5
+    :return: None
+    """
+    def __init__(self, size=5) -> None:
+        super().__init__(size)
+        self.hash_map = [[] for _ in range(self.size)]
+
+    def _add_to_chain(self, key, value) -> None:
+        index = my_hash(self.size, key)
+        chain = self.hash_map[index]
+        if chain:
+            item_to_replace = None
+            for k, v in chain:
+                if k == key:
+                    item_to_replace = (k, v)
+                    break
+            if item_to_replace:
+                chain.remove(item_to_replace)
+        chain.append((key, value))
+
+    def __setitem__(self, key, value):
+        """
+        set value for the provided key
+        """
+        if not self.hash_map[my_hash(self.size, key)]:
+            self.filled += 1
+        if self.filled >= 0.75 * self.size:
+            items = self.items()
+            items.append((key, value))
+            self.size *= 2
+            self.hash_map = [[] for _ in range(self.size)]
+            for k, v in items:
+                self._add_to_chain(k, v)
+        else:
+            self._add_to_chain(key, value)
+
+    def __getitem__(self, key) -> Any:
+        """
+        return value for the provided key,
+        raise KeyError if there is no value for key
+        """
+        chain = self.hash_map[my_hash(self.size, key)]
+        for k, v in chain:
+            if k == key:
+                return v
+        raise KeyError
+
+    def pop(self, key) -> tuple | None:
+        """
+        return element for the provided key and pops it from the map
+        """
+        found_item = None
+        chain = self.hash_map[my_hash(self.size, key)]
+        for k, v in chain:
+            if k == key:
+                found_item = (k, v)
+                break
+        if found_item:
+            chain.remove(found_item)
+        return found_item
+
+    def items(self) -> list:
+        """
+        return sequence of (key,value) tuples
+        """
+        items = []
+        for chain in self.hash_map:
+            for item in chain:
+                items.append(item)
+        return items
+
+    def keys(self) -> list:
+        """
+        return sequence of map keys
+        """
+        keys = []
+        for chain in self.hash_map:
+            for item in chain:
+                keys.append(item[0])
+        return keys
+
+    def values(self) -> list:
+        """
+        return sequence of map values
+        """
+        values = []
+        for chain in self.hash_map:
+            for item in chain:
+                values.append(item[1])
+        return values
 
 
-def test_hashmap_set(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    hm[0] = 0
-    assert hm[0] == 0
-    assert bool(hm)
-    hm[1] = 1
-    assert hm[1] == 1
-    hm[5] = 5
-    assert hm[5] == 5
-
-
-def test_hashmap_extend(test_class=HashMapCollision):
-    hm = test_class(size=4)
-    hm[0] = 0
-    hm[1] = 1
-    assert hm.size == 4
-    hm[2] = 2
-    assert hm.size == 8
-
-
-def test_hashmap_get(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    hm[1] = 1
-    assert hm.get(1) == 1
-    assert hm.get(1, 100) == 1
-    assert hm.get(2) is None
-    assert hm.get(2, 100) == 100
-
-
-def test_hashmap_put(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    assert hm.put(1, 1) is None
-    assert hm.put(1, 2) == 1
-    assert hm[1] == 2
-
-
-def test_hashmap_pop(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    assert hm.pop(1) is None
-    hm[1] = 10
-    assert hm.pop(1) == (1, 10)
-    assert not bool(hm)
-
-
-def test_hashmap_items(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    hm[0] = 10
-    hm[2] = 20
-    assert set(hm.items()) == {(0, 10), (2, 20)}
-
-
-def test_hashmap_keys(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    hm[0] = 10
-    hm[2] = 20
-    assert set(hm.keys()) == {0, 2}
-
-
-def test_hashmap_values(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    hm[0] = 10
-    hm[2] = 20
-    assert set(hm.values()) == {10, 20}
-
-
-def test_hashmap_iter(test_class=HashMapCollision):
-    hm = test_class(size=5)
-    hm[0] = 10
-    hm[2] = 20
-    assert set(hm) == {0, 2}
-
-
-class HashMapOpenAddressing:
-    pass
-
-
-class HashMapSeparateChaining:
-    pass
+if __name__ == '__main__':
+    hm = HashMapSeparateChaining()
+    hm.put(1, 1)
+    print(hm)
+    hm.put(6, 6)
+    print(hm)
