@@ -1,6 +1,6 @@
 """
 Binary tree (with integers) and
-tree (with strings) classes implementation
+general tree classes implementation
 """
 
 from math import isqrt
