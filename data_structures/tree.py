@@ -3,8 +3,6 @@ Binary tree (with integers) and
 general tree classes implementation
 """
 
-from math import isqrt, log2
-
 
 class BinaryTree:
     def __init__(self, value: int):
