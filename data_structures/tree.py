@@ -3,7 +3,7 @@ Binary tree (with integers) and
 general tree classes implementation
 """
 
-from math import isqrt
+from math import isqrt, log2
 
 
 class BinaryTree:
@@ -28,6 +28,13 @@ class BinaryTree:
             right_leaves = self.right.count_leaves()
         return 1 + left_leaves + right_leaves
 
+    def height(self):
+        pointer = self
+        height = 1
+        while pointer := pointer.left:
+            height += 1
+        return height
+
     def insert(self, data: int):
         if not self.left:
             self.left = BinaryTree(data)
@@ -48,22 +55,24 @@ class BinaryTree:
         if self.left:
             self.left.draw_horizontal(level + 1)
 
-    def draw_vertical(self, indent=0, branch=''):
-        """
-        Need to do it without recursion and line breaks,
-        but I'm too lazy ;)
-        """
-        if not indent:
-            indent = (isqrt(self.count_leaves()) + 1) ** 2
-        if branch == '/':
-            print(' ' * (indent + 1), branch)
-        elif branch == '\\':
-            print(' ' * (indent - 1), branch)
-        print(' ' * indent, self.value)
-        if self.left:
-            self.left.draw_vertical(indent // 2, '/')
-        if self.right:
-            self.right.draw_vertical(indent + 2, '\\')
+    def draw_vertical(self):
+        pointer = self
+        level = 0
+        max_level = self.height() - 1
+        stack = []
+        lines = [''] * self.height()
+        while pointer or stack:
+            if pointer:
+                stack.append((pointer, level))
+                pointer = pointer.left
+                level += 1
+            else:
+                pointer, level = stack.pop()
+                space = '   ' * (max_level - level) or ' '
+                lines[level] += space + f'{pointer.value}'
+                pointer = pointer.right
+                level += 1
+        print(*lines, sep='\n')
 
 
 class Tree:
@@ -103,8 +112,10 @@ class Tree:
 
 def print_binary_tree():
     bin_tree = BinaryTree(1)
-    for i in range(2, 9):
+    for i in range(2, 10):
         bin_tree.insert(i)
+    print('--------- Binary Tree ---------')
+    print(bin_tree)
     print('--------- Horizontal ----------')
     bin_tree.draw_horizontal()
     print('--------- Vertical ------------')
@@ -159,4 +170,4 @@ def print_tree():
 
 if __name__ == '__main__':
     print_binary_tree()
-    print_tree()
+    # print_tree()

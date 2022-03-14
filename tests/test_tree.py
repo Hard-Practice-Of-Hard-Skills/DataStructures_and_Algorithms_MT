@@ -13,6 +13,25 @@ def test_binarytree_count():
     assert tree.count_leaves() == 1
 
 
+def test_binarytree_height():
+    tree = BinaryTree(1)
+    assert tree.height() == 1
+    tree.insert(2)
+    assert tree.height() == 2
+    tree.insert(3)
+    assert tree.height() == 2
+    tree.insert(4)
+    assert tree.height() == 3
+    tree.insert(5)
+    assert tree.height() == 3
+    tree.insert(6)
+    assert tree.height() == 3
+    tree.insert(7)
+    assert tree.height() == 3
+    tree.insert(8)
+    assert tree.height() == 4
+
+
 def test_binarytree_insert():
     tree = BinaryTree(10)
     tree.insert(20)
